@@ -1,66 +1,45 @@
 # -*- coding: utf-8 -*-
-"""앱 아이콘(192/512/apple-180/maskable-512) 생성 — 그라데이션 배경 + 이모지."""
+"""소스 일러스트(SOURCE_IMG)에서 앱 아이콘(192/512/apple-180/maskable-512) 생성.
+소스 배경의 검은 모서리를 흰색으로 채운 뒤 각 크기로 리사이즈한다."""
 import sys
 from pathlib import Path
 
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw
 
 sys.stdout.reconfigure(encoding="utf-8")
 
 TOOLS = Path(__file__).resolve().parent
 ICONS = TOOLS.parent / "assets" / "icons"
-ICONS.mkdir(parents=True, exist_ok=True)
+SOURCE_IMG = TOOLS / "icon-source.png"
 
-EMOJI = "🏫"
-COLOR_TOP = (46, 158, 91)     # 그린
-COLOR_BOTTOM = (124, 217, 160)  # 민트
-FONT_PATH = r"C:\Windows\Fonts\seguiemj.ttf"
+WHITE = (254, 254, 254)
+MASKABLE_SAFE_ZONE = 0.92  # 중심 92%만 남기고 확대 (런처 마스크 크롭 대비)
 
 
-def rounded_gradient(size, radius_ratio=0.22):
-    img = Image.new("RGBA", (size, size), (0, 0, 0, 0))
-    grad = Image.new("RGBA", (size, size))
-    for y in range(size):
-        t = y / (size - 1)
-        r = int(COLOR_TOP[0] + (COLOR_BOTTOM[0] - COLOR_TOP[0]) * t)
-        g = int(COLOR_TOP[1] + (COLOR_BOTTOM[1] - COLOR_TOP[1]) * t)
-        b = int(COLOR_TOP[2] + (COLOR_BOTTOM[2] - COLOR_TOP[2]) * t)
-        for x in range(size):
-            grad.putpixel((x, y), (r, g, b, 255))
-    mask = Image.new("L", (size, size), 0)
-    d = ImageDraw.Draw(mask)
-    d.rounded_rectangle([0, 0, size - 1, size - 1], radius=int(size * radius_ratio), fill=255)
-    img.paste(grad, (0, 0), mask)
+def load_base():
+    src = Image.open(SOURCE_IMG).convert("RGB")
+    w, h = src.size
+    img = src.copy()
+    for corner in [(0, 0), (w - 1, 0), (0, h - 1), (w - 1, h - 1)]:
+        ImageDraw.floodfill(img, corner, WHITE, thresh=40)
     return img
 
 
-def add_emoji(img, size, emoji_ratio=0.56):
-    d = ImageDraw.Draw(img)
-    font_size = int(size * emoji_ratio)
-    font = ImageFont.truetype(FONT_PATH, font_size)
-    x = size * 0.5 - font_size * 0.55
-    y = size * 0.5 - font_size * 0.55
-    d.text((x, y), EMOJI, font=font, embedded_color=True)
-    return img
-
-
-def build(size, out_name, square=False, maskable=False):
+def build(base, size, out_name, maskable=False):
     if maskable:
-        img = Image.new("RGBA", (size, size), (0, 0, 0, 0))
-        grad = rounded_gradient(size, radius_ratio=0)
-        img.paste(grad, (0, 0), grad)
-        add_emoji(img, size, emoji_ratio=0.42)
-    elif square:
-        img = rounded_gradient(size, radius_ratio=0.0)
-        add_emoji(img, size)
+        w, h = base.size
+        margin_w = int(w * (1 - MASKABLE_SAFE_ZONE) / 2)
+        margin_h = int(h * (1 - MASKABLE_SAFE_ZONE) / 2)
+        cropped = base.crop((margin_w, margin_h, w - margin_w, h - margin_h))
+        img = cropped.resize((size, size), Image.LANCZOS)
     else:
-        img = rounded_gradient(size, radius_ratio=0.22)
-        add_emoji(img, size)
+        img = base.resize((size, size), Image.LANCZOS)
     img.save(ICONS / out_name)
     print("saved", out_name, img.size)
 
 
-build(192, "app-icon-192.png")
-build(512, "app-icon-512.png")
-build(180, "app-icon-apple-180.png", square=True)
-build(512, "app-icon-maskable-512.png", maskable=True)
+base = load_base()
+build(base, 512, "app-icon-512.png")
+build(base, 192, "app-icon-192.png")
+build(base, 180, "app-icon-apple-180.png")
+build(base, 512, "app-icon-maskable-512.png", maskable=True)
