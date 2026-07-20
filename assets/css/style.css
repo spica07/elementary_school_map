@@ -279,6 +279,8 @@ body {
 .tag.kind-국립 { background: #E3EDFC; color: #2255A4; }
 .tag.branch { background: #F1E8FB; color: #6A3FA0; }
 .card-info { font-size: 0.85rem; color: var(--text-muted); line-height: 1.5; }
+.census-year { opacity: .75; }
+.census-year.stale { opacity: 1; color: #C0392B; font-weight: 600; }
 .card-info .ico { margin-right: 4px; }
 .card-locate {
   align-self: flex-start; margin-top: 2px;

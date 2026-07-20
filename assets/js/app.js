@@ -172,7 +172,9 @@
     var info = [];
     info.push('<div class="card-info">' + esc(f.address) + '</div>');
     if (f.studentCount != null) {
-      info.push('<div class="card-info">학생 ' + f.studentCount + '명 · ' + f.classCount + '학급</div>');
+      var censusStale = f.statYear && (new Date().getFullYear() - parseInt(f.statYear, 10)) >= 3;
+      info.push('<div class="card-info">학생 ' + f.studentCount + '명 · ' + f.classCount + '학급' +
+        (f.statYear ? ' <span class="census-year' + (censusStale ? ' stale' : '') + '">(' + esc(f.statYear) + '년 기준)</span>' : '') + '</div>');
     }
     return (
       '<article class="facility-card" data-id="' + f.id + '">' +
