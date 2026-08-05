@@ -5,17 +5,23 @@
   var SCHOOLS = window.SCHOOLS || [];
   var DATA_META = window.DATA_META || {};
 
-  var KIND_COLOR = { '공립': '#2E9E5B', '사립': '#D4A017', '국립': '#2255A4' };
   var KIND_ORDER = ['공립', '사립', '국립'];
+
+  var HEART_ICON = '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false">' +
+    '<path d="M12 20.4 4.3 12.8a4.8 4.8 0 0 1 6.8-6.8l.9.9.9-.9a4.8 4.8 0 1 1 6.8 6.8z"/></svg>';
+
+  /* 마커·범례 색은 디자인 시스템이 소유한다.
+     style.css 의 --kind-* 가 면색 계열에서 유도한 값이고, 여기서는 읽어 쓰기만 한다. */
+  var ROOT_STYLE = getComputedStyle(document.documentElement);
+  function cssVar(name, fallback) {
+    return (ROOT_STYLE.getPropertyValue(name) || '').trim() || fallback;
+  }
+  var KIND_COLOR = KIND_ORDER.reduce(function (m, k, i) {
+    m[k] = cssVar('--kind-' + (i + 1), cssVar('--sign', '#333'));
+    return m;
+  }, {});
   var REGION_ORDER = ['서울', '부산', '대구', '인천', '광주', '대전', '울산', '세종',
     '경기', '강원', '충북', '충남', '전북', '전남', '경북', '경남', '제주'];
-  var REGION_COLOR = {
-    '서울': '#E1466A', '부산': '#4680E1', '대구': '#E18C46', '인천': '#46B1E1',
-    '광주': '#9B59D9', '대전': '#46C78F', '울산': '#5A6ACF', '세종': '#C7A446',
-    '경기': '#46A0D9', '강원': '#2FA88C', '충북': '#D9679C', '충남': '#B08968',
-    '전북': '#8CB446', '전남': '#469FB0', '경북': '#C96F4A', '경남': '#7C6FD9',
-    '제주': '#E19846'
-  };
   var REGION_FULL = {
     '서울': '서울', '부산': '부산', '대구': '대구', '인천': '인천', '광주': '광주',
     '대전': '대전', '울산': '울산', '세종': '세종', '경기': '경기', '강원': '강원',
@@ -90,7 +96,6 @@
       .replace(/"/g, '&quot;');
   }
 
-  function regionColor(r) { return REGION_COLOR[r] || '#2E9E5B'; }
   function kindColor(k) { return KIND_COLOR[k] || '#2E9E5B'; }
   function districtKey(f) { return f.region + '|' + f.district; }
 
@@ -183,10 +188,9 @@
 
   /* ---------- 카드 ---------- */
   function cardHtml(f) {
-    var rc = regionColor(f.region);
     var fav = favorites.has(f.id);
     var tags = [
-      '<span class="tag district" style="background:' + rc + '">' + esc(f.region) + (f.district ? ' ' + esc(f.district) : '') + '</span>',
+      '<span class="tag district">' + esc(f.region) + (f.district ? ' ' + esc(f.district) : '') + '</span>',
       '<span class="tag kind-' + esc(f.kind) + '">' + esc(f.kind) + '</span>'
     ];
     if (f.isBranch) tags.push('<span class="tag branch">분교</span>');
@@ -202,7 +206,8 @@
         '<div class="card-body">' +
           '<div class="card-title-row">' +
             '<h3 class="card-name">' + esc(f.name) + '</h3>' +
-            '<button class="fav-btn" data-fav="' + f.id + '" aria-label="찜">' + (fav ? '❤️' : '🤍') + '</button>' +
+            '<button class="fav-btn' + (fav ? ' on' : '') + '" data-fav="' + f.id + '"' +
+              ' aria-label="찜" aria-pressed="' + fav + '">' + HEART_ICON + '</button>' +
           '</div>' +
           '<div class="card-tags">' + tags.join('') + '</div>' +
           info.join('') +
@@ -249,14 +254,13 @@
   window.openFacilityModal = function (id) {
     var f = SCHOOLS.find(function (x) { return x.id === id; });
     if (!f) return;
-    var rc = regionColor(f.region);
     var fav = favorites.has(f.id);
     var naverUrl = 'https://map.naver.com/p/search/' + encodeURIComponent(f.name + ' ' + f.address);
     var body = document.getElementById('modalBody');
     body.innerHTML =
       '<h2 class="modal-title">' + esc(f.name) + '</h2>' +
       '<div class="modal-tags">' +
-        '<span class="tag district" style="background:' + rc + '">' + esc(f.region) + (f.district ? ' ' + esc(f.district) : '') + '</span>' +
+        '<span class="tag district">' + esc(f.region) + (f.district ? ' ' + esc(f.district) : '') + '</span>' +
         '<span class="tag kind-' + esc(f.kind) + '">' + esc(f.kind) + '</span>' +
         (f.isBranch ? '<span class="tag branch">분교</span>' : '') +
       '</div>' +
@@ -274,7 +278,7 @@
       '</div>' +
       '<div class="modal-links">' +
         '<a class="link-btn map" href="' + naverUrl + '" target="_blank" rel="noopener">네이버 길찾기</a>' +
-        '<button class="link-btn fav" data-fav="' + f.id + '">' + (fav ? '❤️ 찜 해제' : '🤍 찜하기') + '</button>' +
+        '<button class="link-btn fav" data-fav="' + f.id + '">' + (fav ? '찜 해제' : '찜하기') + '</button>' +
       '</div>';
     document.getElementById('modalOverlay').hidden = false;
     document.body.style.overflow = 'hidden';
@@ -400,7 +404,6 @@
   filterToggleBtn.addEventListener('click', function () {
     var willOpen = filterGroups.hidden;
     filterGroups.hidden = !willOpen;
-    filterToggleBtn.textContent = willOpen ? '▲' : '▼';
     var label = willOpen ? '필터 닫기' : '필터 열기';
     filterToggleBtn.title = label;
     filterToggleBtn.setAttribute('aria-label', label);
@@ -508,6 +511,7 @@
 
   /* ---------- 시작 ---------- */
   document.getElementById('surveyDate').textContent = DATA_META.surveyDate || '';
+  document.getElementById('totalCount').textContent = SCHOOLS.length;
   buildFilterPills();
   buildDistrictSelect();
   buildLegend();
